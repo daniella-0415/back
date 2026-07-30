@@ -1,12 +1,17 @@
+const dns = require("node:dns");
+dns.setServers(["8.8.8.8", "8.8.4.4"]);
+
 require("dotenv").config();
 
 const express = require("express");
+const cors = require("cors");
 const { MongoClient, ObjectId } = require("mongodb");
 const axios = require("axios");
 const bcrypt = require("bcrypt");
 
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 
 const PORT = process.env.PORT || 3000;
@@ -104,6 +109,54 @@ app.post("/signup", async (req, res) => {
 });
 
 
+
+app.post("/signin", async (req, res) => {
+    try {
+
+        const { email, password } = req.body;
+
+        if (!email || !password) {
+            return res.status(400).json({
+                error: "Email and password are required"
+            });
+        }
+
+        const user = await db.collection("users").findOne({ email });
+
+        if (!user) {
+            return res.status(401).json({
+                error: "Invalid email or password"
+            });
+        }
+
+        const validPassword = await bcrypt.compare(password, user.password);
+
+        if (!validPassword) {
+            return res.status(401).json({
+                error: "Invalid email or password"
+            });
+        }
+
+        res.status(200).json({
+            message: "Login successful",
+            user: {
+                id: user._id,
+                firstName: user.firstName,
+                lastName: user.lastName,
+                email: user.email
+            }
+        });
+
+    } catch (error) {
+
+        console.error(error);
+
+        res.status(500).json({
+            error: "Server Error"
+        });
+
+    }
+});
 
 app.get("/users", basicAuth, async (req, res) => {
     try {
